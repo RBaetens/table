@@ -154,6 +154,9 @@ class Table:
         if isinstance(data, np.ndarray):
             if len(data.shape) != 2:
                 raise ValueError(f"'data' should have 2 dimensions, but is of shape {data.shape} instead.")
+            if data.size == 0:
+                raise ValueError(f"'data' cannot have zero elements.")
+                
             self.data = [data]
             self.n_rows, self.n_cols = data.shape
             self.n_cols_list = [data.shape[1]]
@@ -161,12 +164,18 @@ class Table:
 
         ##  Case 2: list or tuple
         if (isinstance(data, list) or isinstance(data, tuple)):
+            # Check if it is not empty
+            if len(data) == 0:
+                raise ValueError(f"'data' cannot have zero elements.")
+            
             # Type and dimensions
             for e in data:
                 if not isinstance(e, np.ndarray):
                     raise TypeError(f"If 'data' is a list, its elements should be of type numpy.ndarray, but found element of type {type(e)} instead.")
                 if len(e.shape) != 2:
                     raise ValueError(f"If 'data' is a list, its elements should have 2 dimensions, but at least one is of shape {e.shape} instead.")
+                if e.size == 0:
+                    raise ValueError(f"Arrays in 'data' cannot have zero elements.")
 
             # Size
             self.n_rows = data[0].shape[0]
@@ -178,21 +187,27 @@ class Table:
             self.n_cols = int(np.sum(self.n_cols_list))
             self.n_arrs = len(self.n_cols_list)
 
-        # Assign data
-        if isinstance(data, list):
-            self.data = data
-        if isinstance(data, tuple):
-            self.data = [e for e in data]
+            # Assign data
+            if isinstance(data, list):
+                self.data = data
+            if isinstance(data, tuple):
+                self.data = [e for e in data]
 
         ## Case 3: dictionary
         if isinstance(data, dict):
-            # Type and dimensions
+            # Check if it is not empty
             data_keys = data.keys()
+            if (data_keys) == 0:
+                raise ValueError(f"'data' cannot have zero elements.")
+            
+            # Type and dimensions
             for key in data_keys:
                 if not isinstance(data[key], np.ndarray):
                     raise TypeError(f"If 'data' is a dict, its values should be of type numpy.ndarray, but found value of type {type(data[key])} instead.")
                 if len(data[key].shape) != 2:
                     raise ValueError(f"If 'data' is a dict, its values should have 2 dimensions, but at least one is of shape {data[key].shape} instead.")
+                if data[key].size == 0:
+                    raise ValueError(f"Arrays in 'data' cannot have zero elements.")
 
             # Size and change to list
             self.n_rows = data[key].shape[0]
@@ -415,3 +430,64 @@ class Table:
             res = res + row
         
         return res
+
+    def __getitem__(self, idx):
+        """This way of indexing only accepts numerical indices. See [...] for indexing with labels.
+
+        Args:
+            idx (int | slice | list | numpy.ndarray | tuple): if specified as a tuple, the elements should be of one of the other allowed types.
+
+        Returns
+            Table: copy of part of the data, returned as new instance of Table | view of part of the data
+        """
+
+        ### Input checks
+        # To tuple anyway
+        if not isinstance(idx, tuple):
+            idx = (idx,)
+
+        # Check dimensions
+        n_dim = len(idx)
+        if ((n_dim < 1) or (2 < n_dim)):
+            raise IndexError(f"Instances of tables.Table have 2 dimensions, but received index of {n_dim} dimensions.")
+
+        # Type checking
+        for e in idx:
+            if not (isinstance(e, int) or isinstance(e, np.integer) or isinstance(e, slice) or isinstance(e, list) or isinstance(e, np.ndarray)):
+                raise IndexError(f"Instances of tables.Table cannot be indexed with objects of type {type(e)}.")
+
+        ## Case 1: only rows are indexed
+        if n_dim == 1:
+            if isinstance(idx[0], list):
+                if len(idx[0]) > self.n_rows:
+                    raise IndexError(f"Index (list) in position 0 has {len(idx[0])} elements while the table only has {self.n_rows} rows.")
+                for e in idx[0]:
+                    if not (isinstance(e, int) or isinstance(e, np.integer) or isinstance(e, bool) or isinstance(e, np.bool)):
+                        raise IndexError(f"Index (list) in position 0 has elements of type {type(e)}, index elements must be integers or booleans.")
+                    # ...
+
+        # Size checking
+        # ...
+
+        ## Case 1: only rows are indexed
+        if n_dim == 1:
+            print("only rows")
+
+        ## Case 2: rows and columns are indexed
+        else:
+            print("rows and columns")
+
+        # idx = idx[0]
+        # print(idx)
+        # print(type(idx))
+        # print(isinstance(idx, slice))
+        # print("\n")
+        # print(idx.start)
+        # print(idx.stop)
+        # print(idx.step)
+        # print("\n")
+        # print(arr[idx])
+
+        arr = np.arange(10)
+        
+        return Table(arr.reshape((2, 5)))
